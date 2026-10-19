@@ -16,8 +16,10 @@ const int Largeur = 20;
 const int Hauteur = 10;
 const int NB_ENNEMIS = 5;
 int NerfEnnemie = 4;
+int NerfEnnemie = 1;
 int niveau = 0;
 bool gameOver = false;
+bool Etat = 0;
 
 
 
@@ -46,6 +48,7 @@ struct enemiesStat                                                              
 {
     int x;
     int y;
+    int pv;
 };
 
 
@@ -148,6 +151,7 @@ bool ennemiPresent(const enemiesStat ennemis[], int x, int y)                   
     for (int i = 0; i < NB_ENNEMIS; i++)
     {
         if (ennemis[i].x == x && ennemis[i].y == y)                                                             // Compare les coordonnees de chaque ennemi.
+        if (ennemis[i].x == x && ennemis[i].y == y && ennemis[i].pv >0)                                                             // Compare les coordonnees de chaque ennemi.
         {
             return true;
         }
@@ -174,6 +178,7 @@ void definirEnnemies(enemiesStat ennemis[], const HeroStat& hero)               
             y = aleatoireY(generateur);
         } while (map[indice(x, y)] != ground || (x == hero.x && y == hero.y) || ennemiPresent(ennemis, x, y));  //Ne pas apparaitre sur qulequchose
         ennemis[i] = { x, y};                                                                               // Definit ennemie
+        ennemis[i] = { x, y, 1};                                                                               // Definit ennemie
     };
 }
 
@@ -240,7 +245,7 @@ void afficherCarte(const HeroStat& hero, const enemiesStat ennemis[])           
 void colisionDetection(HeroStat& hero, enemiesStat ennemis[]) {
     int x = ennemis[1].x;
     for (int i = 0; i < NB_ENNEMIS; i++) {
-        if (hero.x == ennemis[i].x && hero.y == ennemis[i].y) {
+        if (hero.x == ennemis[i].x && hero.y == ennemis[i].y && ennemis[i].pv > 0) {
             hero.pv -= 1;
         }
 
@@ -273,6 +278,7 @@ void mouvementHero(HeroStat& hero, int mouvement)                               
     }
     else
     {
+        Etat = 1;
         return;
     }
 
@@ -297,6 +303,7 @@ void mouvementHero(HeroStat& hero, int mouvement)                               
 
 void mouvementEnnemie(enemiesStat ennemis[], HeroStat& hero) {
     for (int i = 0; i < NB_ENNEMIS; i++) {
+    for (int i = 0; i < NB_ENNEMIS; i++ && ennemis[i].pv > 0) {
         int x = ennemis[i].x - hero.x;
         int y = ennemis[i].y - hero.y;
         int nouveauX = ennemis[i].x;
@@ -371,6 +378,10 @@ void mouvementEnnemie(enemiesStat ennemis[], HeroStat& hero) {
 }
 
 
+void Spell(HeroStat& hero, int mouvement) {
+
+}
+
 
 int main()
 {
@@ -407,6 +418,10 @@ int main()
             {
                 mouvementHero(hero, touche);
                 colisionDetection(hero, ennemis);
+                if (Etat == 1) {
+                    int valid = getch();
+                    Spell(hero, valid);
+                }
                 mouvementEnnemie(ennemis, hero);
                 colisionDetection(hero, ennemis);
             }
@@ -424,6 +439,10 @@ int main()
     return 0;
 }
 
+
+// SPELS = appelle plusieurs fonction qui, prennent toute les position et vérifient si un ennemies est présent, posse en boucle une étoile au niveau des ennmies et place un curseur sur une étoile qui se déplace d'étoile en étoile avec les fléches, on appuie sur espace pour lancer le sort, qui réduit la vie de l'ennemie a 0, on modifie les fonction précédente pour que tout ce qui a un rapport avec les ennmies ne marche que si ennemies est pv >0
 //crer une structure de map qui continnent la map de facon dinamique
 //alocation dinamique de tableau
-// pour que la carte, les ennemis et le spawn ne soit pas fixes
+// pour que la carte, les ennemis et le spawn ne soit pas fixes// pour que la carte, les ennemis et le spawn ne soit pas fixes
+// COULEUR / ODIO / LORE
+// vérifier pathfending et ammeliore pour qu'il détecte les obstacle.
