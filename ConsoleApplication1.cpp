@@ -394,15 +394,27 @@ bool mouvementCurseur(HeroStat& hero, int touche, enemiesStat* ennemis, pointeur
 	static int curseurX = curseur.x;
 	static int curseurY = curseur.y;
     mvaddch(curseurY, curseurX, '^');
-	if (touche == 'z' || touche == 'Z' || touche == KEY_UP)
-		curseurY--;
-	else if (touche == 's' || touche == 'S' || touche == KEY_DOWN)
-		curseurY++;
-	else if (touche == 'q' || touche == 'Q' || touche == KEY_LEFT)
-		curseurX--;
-	else if (touche == 'd' || touche == 'D' || touche == KEY_RIGHT)
-		curseurX++;
-	else if (touche == 32)                                                                                                                     // Espace pour lancer le sort.
+	bool curseurPlace = false;
+	int Ymouvement = 0;
+	int Xmouvement = 0;
+	int j = 0;
+    if (touche == 'z' || touche == 'Z' || touche == KEY_UP) {
+        curseurY--;
+        Ymouvement = -1;
+    }
+    else if (touche == 's' || touche == 'S' || touche == KEY_DOWN) {
+        curseurY++;
+        Ymouvement = +1;
+    }
+    else if (touche == 'q' || touche == 'Q' || touche == KEY_LEFT) {
+        curseurX--;
+        Xmouvement = -1;
+    }
+    else if (touche == 'd' || touche == 'D' || touche == KEY_RIGHT) {
+        curseurX++;
+        Xmouvement = +1;
+    }
+	if (touche == 32)                                                                                                                     // Espace pour lancer le sort.
 	{
 		for (int i = 0; i < NB_ENNEMIS; i++)
 		{
