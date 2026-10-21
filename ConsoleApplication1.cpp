@@ -24,6 +24,8 @@ int NB_ENNEMIS = 1;                                                             
 int niveauMax = 4;                                                                                                                          // Nombre de niveau max pour le moment const plutart variables
 bool sonEnnemies = false;
 bool sonCacher = false;
+bool heroMortEnnemi = false;
+bool heroMortHoxygene = false;
 
 
 
@@ -42,6 +44,7 @@ struct HeroStat
     int y;
     bool hidden;
     int pv;
+	int oxygene;
 };
 
 
@@ -52,7 +55,16 @@ struct enemiesStat
     int pv;
 };
 
+struct pointeurEnnemis
+{
+    int x;
+	int y;
+};
 
+struct CurseurPosition {
+    int x;
+    int y;
+};
 
 
 int indice(int x, int y)                                                                                                                        // Transforme les coordonnees (x, y) en indice du tableau
@@ -189,42 +201,6 @@ bool ennemiPresent(const enemiesStat* ennemis, int x, int y)                    
     return false;                                                                                                                               // Aucun ennemi vivant sur cette case.
 }
 
-
-void definirEnnemies(enemiesStat ennemis[], const HeroStat& hero)
-{
-    random_device rd;                                                                                                                           // Recupere une graine aleatoire.
-    mt19937 generateur(rd());                                                                                                                   // Cree le generateur aleatoire.
-    uniform_int_distribution<int> aleatoireX(0, Largeur - 1);                                                                                   // Choisit une coordonnee X.
-    uniform_int_distribution<int> aleatoireY(0, Hauteur - 1);                                                                                   // Choisit une coordonnee Y.
-
-
-    for (int i = 0; i < NB_ENNEMIS; i++)
-    {
-        int x, y;
-        bool caseValide;
-
-        do                                                                                                                                      //boucle jusqu'a trouver une case valide pour l'ennemi
-        {
-            x = aleatoireX(generateur);                                                                                                         // Tire une position X au hasard.
-            y = aleatoireY(generateur);                                                                                                         // Tire une position Y au hasard.
-            caseValide = true;                                                                                                                  // Considere la case valide au depart.
-
-            if (map[indice(x, y)] != ground)
-                caseValide = false;                                                                                                             // Refuse l'eau et les montagnes.
-            if (x == hero.x && y == hero.y)
-                caseValide = false;                                                                                                             // Refuse la case du heros.
-            if (x == sortieX && y == sortieY)
-                caseValide = false;                                                                                                             // Refuse la case de sortie.
-            if (ennemiPresent(ennemis, x, y))
-                caseValide = false;                                                                                                             // Refuse une case deja occupee par un ennemi.
-
-        } while (caseValide == false);
-
-        ennemis[i] = { x, y, 1 };
-    }
-}
-
-
 void afficherCarte(const HeroStat& hero, const enemiesStat ennemis[])                                                                           // Affiche le terrain, le heros et les ennemis.
 {
     erase();                                                                                                                                    // Efface l'affichage precedent.
@@ -287,16 +263,17 @@ void afficherCarte(const HeroStat& hero, const enemiesStat ennemis[])           
     mvprintw(Hauteur + 1, 0, "Z : haut S : bas Q : gauche D : droite");
     mvprintw(Hauteur + 2, 0, "E : sort R : quitter");
     mvprintw(Hauteur + 3, 0, "PV : %d", hero.pv);                                                                                               // Affiche les points de vie restants.
+    mvprintw(Hauteur + 5, 0, "Oxygene : %d", hero.oxygene);      
 
     if (hero.hidden)
         mvprintw(Hauteur + 4, 0, "Le heros est cache dans la riviere.");
     else
         mvprintw(Hauteur + 4, 0, "Le heros est visible.");
 
-    mvprintw(Hauteur + 5, 0, "Niveau : %d", niveau);
-    mvprintw(Hauteur + 6, 0, "Objectif : atteindre la sortie E.");
+    mvprintw(Hauteur + 6, 0, "Niveau : %d", niveau);
+    mvprintw(Hauteur + 7, 0, "Objectif : atteindre la sortie E.");
     if (has_colors() == false) {
-        mvprintw(Hauteur + 7, 0, "Votre terminal ne supporte pas les couleurs.");
+        mvprintw(Hauteur + 8, 0, "Votre terminal ne supporte pas les couleurs.");
     }
     refresh();                                                                                                                                  // Met a jour l'ecran.
 }
@@ -412,12 +389,113 @@ void mouvementEnnemie(enemiesStat ennemis[], const HeroStat& hero)              
     }
 }
 
-
-void Spell(HeroStat& hero, enemiesStat ennemis[])                                                                                               // Lance un sort sur un ennemi adjacent.
+bool mouvementCurseur(HeroStat& hero, int touche, enemiesStat* ennemis, pointeurEnnemis* pointeur, CurseurPosition& curseur)                                                                                                 // Déplace le curseur sur les ennemis adjacents.
 {
-    int a = 0;                                                                                                                                  // vide pour l'instant car a remplir plus tard
+	static int curseurX = curseur.x;
+	static int curseurY = curseur.y;
+    mvaddch(curseurY, curseurX, '^');
+	if (touche == 'z' || touche == 'Z' || touche == KEY_UP)
+		curseurY--;
+	else if (touche == 's' || touche == 'S' || touche == KEY_DOWN)
+		curseurY++;
+	else if (touche == 'q' || touche == 'Q' || touche == KEY_LEFT)
+		curseurX--;
+	else if (touche == 'd' || touche == 'D' || touche == KEY_RIGHT)
+		curseurX++;
+	else if (touche == 32)                                                                                                                     // Espace pour lancer le sort.
+	{
+		for (int i = 0; i < NB_ENNEMIS; i++)
+		{
+			if (curseurX == pointeur[i].x && curseurY == pointeur[i].y)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	if (curseurX < hero.x - 1) curseurX = hero.x - 1;
+	if (curseurX > hero.x + 1) curseurX = hero.x + 1;
+	if (curseurY < hero.y - 1) curseurY = hero.y - 1;
+	if (curseurY > hero.y + 1) curseurY = hero.y + 1;
+	move(curseurY, curseurX);                                                                                                                 // Déplace le curseur à la nouvelle position.
 }
 
+void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, CurseurPosition curseur)                                                                                               // Lance un sort sur un ennemi adjacent.
+{
+    pointeur = new pointeurEnnemis[9] {};
+	int i = 0;
+    for (int y = 0; y < 3; y++){
+        for (int x = 0; x < 3; x++) {
+            if (ennemiPresent(ennemis, hero.x + x - 1, hero.y + y - 1)) {
+
+                pointeur[i].x = hero.x + x - 1;
+                pointeur[i].y = hero.y + y - 1;
+                i++;
+            }
+        }
+    }
+	if (i == 0) {
+		delete[] pointeur;
+        mvprintw(10, 10, "Aucun ennemi adjacent, le sort ne peut pas être lancé.");
+		return;                                                                                                                                // Aucun ennemi adjacent, le sort ne peut pas être lancé.
+	}
+	curseur.x = pointeur[0].x;
+	curseur.y = pointeur[0].y;
+    bool jouer = false;
+    while (!jouer) {
+        afficherCarte(hero, ennemis);
+        for (int j = 0; j < i; j++) {
+            mvaddch(pointeur[j].y, pointeur[j].x, '*');
+        }
+        mvaddch(curseur.y, curseur.x, '^');
+        int touche = getch();
+        if (mouvementCurseur(hero, touche, ennemis, pointeur, curseur) == true) {
+			int x = curseur.x;
+			int y = curseur.y;
+			for (int j = 0; j < NB_ENNEMIS; j++) {
+				if (ennemis[j].x == x && ennemis[j].y == y) {
+					ennemis[j].pv = 0;                                                                                                           // L'ennemi ciblé perd tous ses PV.
+					break;
+				}
+			}
+            jouer = true;
+        }
+    }
+}
+
+
+void heroMort(HeroStat& hero)                                                                                                                        // Gère la mort du heros.
+{
+
+	if (hero.oxygene <= 0)
+	{
+		heroMortHoxygene = true;                                                                                                               // Le heros est mort par manque d'oxygene.
+	}
+    else
+    {
+        heroMortEnnemi = true;                                                                                                                 // Le heros est mort par un ennemi.
+    }
+}
+
+
+void heroHoxygene(HeroStat& hero)                                                                                                               // Gère l'oxygene du heros.
+{
+	if (map[indice(hero.x, hero.y)] == river)
+	{
+		hero.oxygene -= 1;                                                                                                                      // Le heros est dans la riviere, il perd de l'oxygene.
+	}
+	else
+	{
+		if (hero.oxygene < 3)                                                                                                                   // Le heros est hors de la riviere, il regagne de l'oxygene jusqu'a un maximum de 3.
+		{
+			hero.oxygene += 1;                                                                                                                  // Le heros est hors de la riviere, il gagne de l'oxygene.
+		}
+	}
+	if (hero.oxygene <= 0)
+	{
+		hero.pv -= 1;                                                                                                                           // Le heros pert ses points de vie par manque d'oxygene.
+	}
+}
 
 int main()                                                                                                                                      // Fonction principale : gere la partie.
 {
@@ -439,11 +517,7 @@ int main()                                                                      
 			gameOver = true;
             break;
         }
-            HeroStat hero = { spawnX, spawnY, false, 1 };
-
-
-
-        //definirEnnemies(ennemis, hero);                                                                                                       // Place les ennemis sur la carte.
+        HeroStat hero = { spawnX, spawnY, false, 1, 3};
 
         bool niveauFini = false;
         while (!gameOver && !niveauFini)
@@ -456,6 +530,12 @@ int main()                                                                      
                 gameOver = true;
                 break;                                                                                                                          // Ferme la boucle et la partie
             }
+
+            if (touche == 'n' || touche == 'N')
+            {
+                niveauFini = true;
+                break;
+            }
             mouvementHero(hero, touche);                                                                                                        // Demande le mouvement ou sort.
             if (hero.hidden == true && sonCacher == false)
             {
@@ -467,16 +547,24 @@ int main()                                                                      
                 PlaySound(NULL, NULL, 0);
                 sonCacher = false;
             }
-
+            heroHoxygene(hero);
+            
             if (Etat)
             {
-                Spell(hero, ennemis);                                                                                                           // Lance le sort demande.
+                pointeurEnnemis* pointeur = nullptr;
+                CurseurPosition curseur = { 0, 0 };
+                Spell(hero, ennemis, pointeur, curseur);                                                                                        // Lance le sort demande.
                 Etat = false;                                                                                                                   // Reinitialise l'etat du sort.
+                delete[] pointeur;
+                pointeur = nullptr;
+				/*delete curseur;
+                curseur = nullptr;*/
             }
-
+            
             colisionDetection(hero, ennemis);                                                                                                   // Verifie les collisions apres l'action du heros.
             if (hero.pv <= 0)                                                                                                                   // Termine la partie si le heros n'a plus de PV.
             {
+                heroMort(hero);
                 gameOver = true;
                 break;
             }
@@ -491,11 +579,24 @@ int main()                                                                      
             mouvementEnnemie(ennemis, hero);                                                                                                    // Fait bouger les ennemis.
             colisionDetection(hero, ennemis);                                                                                                   // Verifie les collisions apres le mouvement des ennemis.
             if (hero.pv <= 0)                                                                                                                   // Termine la partie si le heros n'a plus de PV.
+            {
+                heroMort(hero);
                 gameOver = true;
+            }
         }
 		delete[] ennemis;                                                                                                                       // Libere la memoire allouee pour les ennemis du niveau.]
     }
-
+    if (niveau > niveauMax)
+    {
+        std::cout << "\n\n\n\n                              " << " Congratulation! You have completed all the levels." << endl;
+    }
+	if (heroMortHoxygene == true)
+	{
+		std::cout << "\n\n\n\n                                        " << " You ran out of oxygen." << endl;
+	}
+	else if (heroMortEnnemi == true){
+		std::cout << "\n\n\n\n                                             " << " You died." << endl;
+	}
     endwin();                                                                                                                                   // Termine PDCurses et restaure la console.
     std::cout << "\n\n\n\n                                              " << "Game Over\n\n\n" << endl;                                              // petit message de fin a améliorer peut etre
     return 0;                                                                                                                                   // Termine le programme.
@@ -504,4 +605,4 @@ int main()                                                                      
 
 
 // SPELS = appelle plusieurs fonction qui, prennent toute les position et vérifient si un ennemies est présent, posse en boucle une étoile au niveau des ennmies, et place un curseur sur une étoile qui se déplace d'étoile en étoile avec les fléches, on appuie sur espace pour lancer le sort, qui réduit la vie de l'ennemie a 0, on modifie les fonction précédente pour que tout ce qui a un rapport avec les ennmies ne marche que si ennemies est pv >0
-// vérifier pathfending et ammeliore pour qu'il détecte les obstacle.
+//pathfending détecte les obstacle.
