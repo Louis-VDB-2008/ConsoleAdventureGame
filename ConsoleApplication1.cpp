@@ -427,9 +427,14 @@ bool mouvementCurseur(HeroStat& hero, int touche, enemiesStat* ennemis, pointeur
 	}
 	if (curseurX < hero.x - 1) curseurX = hero.x - 1;
 	if (curseurX > hero.x + 1) curseurX = hero.x + 1;
+    if (curseurX >= Largeur) curseurX = Largeur-1;
+    if (curseurX < 0) curseurX = 0;
 	if (curseurY < hero.y - 1) curseurY = hero.y - 1;
 	if (curseurY > hero.y + 1) curseurY = hero.y + 1;
-	move(curseurY, curseurX);                                                                                                                 // Déplace le curseur à la nouvelle position.
+    if (curseurY >= Hauteur) curseurY = Hauteur-1;
+    if (curseurY < 0) curseurY = 0;
+    curseur.y = curseurY;
+    curseur.x = curseurX;
 }
 
 void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, CurseurPosition curseur)                                                                                               // Lance un sort sur un ennemi adjacent.
@@ -447,8 +452,8 @@ void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, Cur
         }
     }
 	if (i == 0) {
-		delete[] pointeur;
-        mvprintw(10, 10, "Aucun ennemi adjacent, le sort ne peut pas être lancé.");
+/*		delete[] pointeur;
+        mvprintw(10, 10, "Aucun ennemi adjacent, le sort ne peut pas être lancé.");*/
 		return;                                                                                                                                // Aucun ennemi adjacent, le sort ne peut pas être lancé.
 	}
 	curseur.x = pointeur[0].x;
@@ -466,7 +471,7 @@ void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, Cur
 			int y = curseur.y;
 			for (int j = 0; j < NB_ENNEMIS; j++) {
 				if (ennemis[j].x == x && ennemis[j].y == y) {
-					ennemis[j].pv = 0;                                                                                                           // L'ennemi ciblé perd tous ses PV.
+					ennemis[j].pv -= 1;                                                                                                           // L'ennemi ciblé perd tous ses PV.
 					break;
 				}
 			}
@@ -498,7 +503,7 @@ void heroHoxygene(HeroStat& hero)                                               
 	}
 	else
 	{
-		if (hero.oxygene < 3)                                                                                                                   // Le heros est hors de la riviere, il regagne de l'oxygene jusqu'a un maximum de 3.
+		if (hero.oxygene < 10)                                                                                                                  // Le heros est hors de la riviere, il regagne de l'oxygene jusqu'a un maximum de 3.
 		{
 			hero.oxygene += 1;                                                                                                                  // Le heros est hors de la riviere, il gagne de l'oxygene.
 		}
@@ -529,7 +534,7 @@ int main()                                                                      
 			gameOver = true;
             break;
         }
-        HeroStat hero = { spawnX, spawnY, false, 1, 3};
+        HeroStat hero = { spawnX, spawnY, false, 1, 5};
 
         bool niveauFini = false;
         while (!gameOver && !niveauFini)
@@ -569,8 +574,6 @@ int main()                                                                      
                 Etat = false;                                                                                                                   // Reinitialise l'etat du sort.
                 delete[] pointeur;
                 pointeur = nullptr;
-				/*delete curseur;
-                curseur = nullptr;*/
             }
             
             colisionDetection(hero, ennemis);                                                                                                   // Verifie les collisions apres l'action du heros.
@@ -616,5 +619,5 @@ int main()                                                                      
 
 
 
-// SPELS = appelle plusieurs fonction qui, prennent toute les position et vérifient si un ennemies est présent, posse en boucle une étoile au niveau des ennmies, et place un curseur sur une étoile qui se déplace d'étoile en étoile avec les fléches, on appuie sur espace pour lancer le sort, qui réduit la vie de l'ennemie a 0, on modifie les fonction précédente pour que tout ce qui a un rapport avec les ennmies ne marche que si ennemies est pv >0
+// spels pas spammable et correction du bug tire obliger de boucher, rajouter un moyen de quitter le sort sans le lancer
 //pathfending détecte les obstacle.

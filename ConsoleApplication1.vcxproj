@@ -102,12 +102,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\lvandenbossche\Desktop\Librairie\PDCurses-master;C:\Users\Windows\Documents\Programation\librairie\PDCurses-3.9</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\lvandenbossche\Desktop\Librairie\PDCurses-master;C:\Users\Windows\Documents\Programation\librairie\PDCurses-3.9;C:\Users\lvandenbossche\Desktop\librairies\PDCurses-3.9</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\lvandenbossche\Desktop\Librairie\PDCurses-master\wincon;C:\Users\Windows\Documents\Programation\librairie\PDCurses-3.9\wincon</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\lvandenbossche\Desktop\Librairie\PDCurses-master\wincon;C:\Users\Windows\Documents\Programation\librairie\PDCurses-3.9\wincon;C:\Users\lvandenbossche\Desktop\librairies\PDCurses-3.9\wincon</AdditionalLibraryDirectories>
       <AdditionalDependencies>pdcurses.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
