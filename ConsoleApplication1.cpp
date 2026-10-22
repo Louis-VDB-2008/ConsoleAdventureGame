@@ -26,6 +26,8 @@ bool sonEnnemies = false;
 bool sonCacher = false;
 bool heroMortEnnemi = false;
 bool heroMortHoxygene = false;
+bool EnergieInsufisante = false;
+bool EnnemieTuable = false;
 
 
 
@@ -45,6 +47,7 @@ struct HeroStat
     bool hidden;
     int pv;
 	int oxygene;
+    int energie;
 };
 
 
@@ -259,9 +262,12 @@ void afficherCarte(const HeroStat& hero, const enemiesStat ennemis[])           
             mvaddch(y, x, symbole);                                                                                                             // Affiche symbole aux coordonnees (y, x), aprés les couleurs pour les appliquer
         }
     }
-
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<int> color(1, 7);
+    attron(COLOR_PAIR(color(gen)));
     mvprintw(Hauteur + 1, 0, "Z : haut S : bas Q : gauche D : droite");
-    mvprintw(Hauteur + 2, 0, "E : sort R : quitter");
+    mvprintw(Hauteur + 2, 0, "R : quitter E : sort      Ennergie pour lancer le sort requis : 20");
     mvprintw(Hauteur + 3, 0, "PV : %d", hero.pv);                                                                                               // Affiche les points de vie restants.
     mvprintw(Hauteur + 5, 0, "Oxygene : %d", hero.oxygene);      
 
@@ -274,6 +280,13 @@ void afficherCarte(const HeroStat& hero, const enemiesStat ennemis[])           
     mvprintw(Hauteur + 7, 0, "Objectif : atteindre la sortie E.");
     if (has_colors() == false) {
         mvprintw(Hauteur + 8, 0, "Votre terminal ne supporte pas les couleurs.");
+    }
+    mvprintw(Hauteur + 9, 0, "Energie Total : %d / 30", hero.energie);
+    if (EnergieInsufisante == true) {
+        mvprintw(Hauteur + 10, 0, "Energie insufissante : %d / 20", hero.energie);
+    }
+    if (EnnemieTuable == true) {
+        mvprintw(Hauteur + 10, 0, "Aucun ennemie reperer, sort echouer, ennergie perdue");
     }
     refresh();                                                                                                                                  // Met a jour l'ecran.
 }
@@ -331,7 +344,7 @@ void mouvementEnnemie(enemiesStat ennemis[], const HeroStat& hero)              
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<int> direction(0, 3);                                                                                              // 0 droite, 1 gauche, 2 bas, 3 haut.
-
+    bool poursuite = false;
     for (int i = 0; i < NB_ENNEMIS; i++)
     {
         if (ennemis[i].pv <= 0)
@@ -343,9 +356,7 @@ void mouvementEnnemie(enemiesStat ennemis[], const HeroStat& hero)              
         int nouveauEnnemiY = ennemis[i].y;
 
         if (!hero.hidden && abs(differenceX) + abs(differenceY) <= 4) {
-            if (sonEnnemies == false)
-                PlaySound(TEXT("C:\\Windows\\Media\\Windows Notify System Generic.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
-            sonEnnemies = true;
+            poursuite = true;
             if (abs(differenceX) > abs(differenceY)) {
                 if (differenceX > 0) {
                     nouveauEnnemiX += 1;
@@ -364,10 +375,6 @@ void mouvementEnnemie(enemiesStat ennemis[], const HeroStat& hero)              
             }
         }
         else {
-            if (sonEnnemies == true)
-                PlaySound(NULL, NULL, 0);
-            sonEnnemies = false;
-            sonEnnemies = false;
             int choix = direction(gen);                                                                                                         // Choisit une direction au hasard.
             if (choix == 0) nouveauEnnemiX++;
             else if (choix == 1) nouveauEnnemiX--;
@@ -387,17 +394,28 @@ void mouvementEnnemie(enemiesStat ennemis[], const HeroStat& hero)              
         ennemis[i].x = nouveauEnnemiX;                                                                                                          // Actualise la position X de l'ennemi.
         ennemis[i].y = nouveauEnnemiY;                                                                                                          // Actualise la position Y de l'ennemi.
     }
+    if (sonEnnemies == false && poursuite == true) {
+        PlaySound(TEXT("C:\\Windows\\Media\\Windows Notify System Generic.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
+        sonEnnemies = true;
+    }
+    else if (sonEnnemies == true && poursuite == false){
+        PlaySound(NULL, NULL, 0);
+        sonEnnemies = false;
+    }
 }
 
 bool mouvementCurseur(HeroStat& hero, int touche, enemiesStat* ennemis, pointeurEnnemis* pointeur, CurseurPosition& curseur)                                                                                                 // Déplace le curseur sur les ennemis adjacents.
 {
-	static int curseurX = curseur.x;
-	static int curseurY = curseur.y;
+	int curseurX = curseur.x;
+	int curseurY = curseur.y;
     mvaddch(curseurY, curseurX, '^');
 	bool curseurPlace = false;
 	int Ymouvement = 0;
 	int Xmouvement = 0;
 	int j = 0;
+
+    if (touche == 27)
+        return true;
     if (touche == 'z' || touche == 'Z' || touche == KEY_UP) {
         curseurY--;
         Ymouvement = -1;
@@ -414,7 +432,7 @@ bool mouvementCurseur(HeroStat& hero, int touche, enemiesStat* ennemis, pointeur
         curseurX++;
         Xmouvement = +1;
     }
-	if (touche == 32)                                                                                                                     // Espace pour lancer le sort.
+	if (touche == 32)                                                                                                                           // Espace pour lancer le sort.
 	{
 		for (int i = 0; i < NB_ENNEMIS; i++)
 		{
@@ -435,9 +453,10 @@ bool mouvementCurseur(HeroStat& hero, int touche, enemiesStat* ennemis, pointeur
     if (curseurY < 0) curseurY = 0;
     curseur.y = curseurY;
     curseur.x = curseurX;
+    return false;
 }
 
-void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, CurseurPosition curseur)                                                                                               // Lance un sort sur un ennemi adjacent.
+void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, CurseurPosition curseur)                                           // Lance un sort sur un ennemi adjacent.
 {
     pointeur = new pointeurEnnemis[9] {};
 	int i = 0;
@@ -452,30 +471,37 @@ void Spell(HeroStat& hero, enemiesStat* ennemis, pointeurEnnemis*& pointeur, Cur
         }
     }
 	if (i == 0) {
-/*		delete[] pointeur;
-        mvprintw(10, 10, "Aucun ennemi adjacent, le sort ne peut pas être lancé.");*/
+        EnnemieTuable = true;
 		return;                                                                                                                                // Aucun ennemi adjacent, le sort ne peut pas être lancé.
 	}
+    sonEnnemies = false;
+    PlaySound(TEXT("C:\\Windows\\Media\\Windows Hardware Fail.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 	curseur.x = pointeur[0].x;
 	curseur.y = pointeur[0].y;
     bool jouer = false;
     while (!jouer) {
         afficherCarte(hero, ennemis);
         for (int j = 0; j < i; j++) {
+            attron(COLOR_PAIR(3));
             mvaddch(pointeur[j].y, pointeur[j].x, '*');
         }
+        attron(COLOR_PAIR(1));
         mvaddch(curseur.y, curseur.x, '^');
         int touche = getch();
         if (mouvementCurseur(hero, touche, ennemis, pointeur, curseur) == true) {
+            if (touche == 27)
+                break;
 			int x = curseur.x;
 			int y = curseur.y;
 			for (int j = 0; j < NB_ENNEMIS; j++) {
-				if (ennemis[j].x == x && ennemis[j].y == y) {
+				if (ennemis[j].x == x && ennemis[j].y == y && ennemis[j].pv > 0 ) {
 					ennemis[j].pv -= 1;                                                                                                           // L'ennemi ciblé perd tous ses PV.
 					break;
 				}
 			}
             jouer = true;
+            PlaySound(NULL, NULL, 0);
+            sonEnnemies = false;
         }
     }
 }
@@ -503,7 +529,7 @@ void heroHoxygene(HeroStat& hero)                                               
 	}
 	else
 	{
-		if (hero.oxygene < 10)                                                                                                                  // Le heros est hors de la riviere, il regagne de l'oxygene jusqu'a un maximum de 3.
+		if (hero.oxygene < 5)                                                                                                                  // Le heros est hors de la riviere, il regagne de l'oxygene jusqu'a un maximum de 3.
 		{
 			hero.oxygene += 1;                                                                                                                  // Le heros est hors de la riviere, il gagne de l'oxygene.
 		}
@@ -534,12 +560,17 @@ int main()                                                                      
 			gameOver = true;
             break;
         }
-        HeroStat hero = { spawnX, spawnY, false, 1, 5};
+        HeroStat hero = { spawnX, spawnY, false, 1, 5, 4};
 
         bool niveauFini = false;
         while (!gameOver && !niveauFini)
         {
+            if (hero.energie < 30) {
+                hero.energie++;
+            }
             afficherCarte(hero, ennemis);                                                                                                       // Affiche la carte.
+            EnergieInsufisante = false;
+            EnnemieTuable = false;
             int touche = getch();                                                                                                               // Attend une touche du joueur.
 
             if (touche == 'r' || touche == 'R' || touche == 27)
@@ -556,6 +587,7 @@ int main()                                                                      
             mouvementHero(hero, touche);                                                                                                        // Demande le mouvement ou sort.
             if (hero.hidden == true && sonCacher == false)
             {
+                sonEnnemies = false;
                 PlaySound(TEXT("C:\\Windows\\Media\\Ring01.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);                                   //TEXT sert à rendre le code compatible avec les configurations Windows
                 sonCacher = true;                                                                                                               // NULL signifie qu'on ne fournit pas de ressource contenant le son.
             }                                                                                                                                   // SND_FILENAME indique que le premier argument est un nom de fichier.
@@ -563,10 +595,11 @@ int main()                                                                      
             {                                                                                                                                   // SND_LOOP fait que le son se répète en boucle jusqu'à ce qu'on l'arrête.
                 PlaySound(NULL, NULL, 0);
                 sonCacher = false;
+                sonEnnemies = false;
             }
             heroHoxygene(hero);
             
-            if (Etat)
+            if (Etat && hero.energie >= 20)
             {
                 pointeurEnnemis* pointeur = nullptr;
                 CurseurPosition curseur = { 0, 0 };
@@ -574,8 +607,13 @@ int main()                                                                      
                 Etat = false;                                                                                                                   // Reinitialise l'etat du sort.
                 delete[] pointeur;
                 pointeur = nullptr;
+                hero.energie -= 20;
+                sonEnnemies = false;
             }
-            
+            else if (Etat) {
+                EnergieInsufisante = true;                                                                                                     // pour envoyer message et prévenir le jouer
+                Etat = false;
+            }
             colisionDetection(hero, ennemis);                                                                                                   // Verifie les collisions apres l'action du heros.
             if (hero.pv <= 0)                                                                                                                   // Termine la partie si le heros n'a plus de PV.
             {
@@ -587,6 +625,7 @@ int main()                                                                      
             if (hero.x == sortieX && hero.y == sortieY)                                                                                         // Le heros a atteint la sortie, il a fini le niveaux
             {
                 niveauFini = true;
+                sonEnnemies = false;
                 PlaySound(TEXT("C:\\Windows\\Media\\Windows Proximity Notification.wav"), NULL, SND_FILENAME | SND_ASYNC);
                 break;
             }
@@ -615,9 +654,4 @@ int main()                                                                      
     endwin();                                                                                                                                   // Termine PDCurses et restaure la console.
     std::cout << "\n\n\n\n                                              " << "Game Over\n\n\n" << endl;                                              // petit message de fin a améliorer peut etre
     return 0;                                                                                                                                   // Termine le programme.
-}
-
-
-
-// spels pas spammable et correction du bug tire obliger de boucher, rajouter un moyen de quitter le sort sans le lancer
-//pathfending détecte les obstacle.
+};
